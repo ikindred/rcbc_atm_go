@@ -12,7 +12,8 @@ class PrinterResult {
 }
 
 class PrinterService {
-  static const int _lineWidth = 40;
+  static const int _lineWidth = 32;
+  static const int _labelWidth = 12;
   static const MethodChannel _methodChannel = MethodChannel('topwise/device');
   static const Duration _printTimeout = Duration(seconds: 20);
 
@@ -22,10 +23,11 @@ class PrinterService {
     try {
       await _methodChannel
           .invokeMethod<Map<dynamic, dynamic>>('printer/printReceipt', <String, dynamic>{
+            'preLogoLines': [_centered('***** CUSTOMER COPY *****')],
             'lines': _buildReceiptLines(tx),
             'gray': 3,
             'align': 'LEFT',
-            'textSize': 16,
+            'textSize': 20,
             'bold': false,
             'underline': false,
           })
@@ -60,20 +62,15 @@ class PrinterService {
 
   List<String> _buildReceiptLines(TransactionModel tx) {
     final dash = '-' * _lineWidth;
-    final copy = '*' * 5;
 
     return [
-      _centered('$copy CUSTOMER COPY $copy'),
-      '',
-      // Sub-header (logo image prints above these lines via native code)
+      // Sub-header printed directly after logo (logo prints above these)
       _centered('RCBC Savings Bank'),
       _centered('333 Sen. Gil Puyat Ave, Makati'),
       _centered('www.rcbc.com'),
-      '',
       dash,
       _centered(tx.transactionType.toUpperCase()),
       dash,
-      '',
       _colonRow('Date / Time', tx.dateTime),
       _colonRow('RRN',         tx.rrn),
       _colonRow('TID',         tx.tid),
@@ -86,7 +83,6 @@ class PrinterService {
       _colonRow('Auth Code',   tx.authCode),
       _colonRow('Card No',     tx.cardNo),
       dash,
-      '',
       _colonRow('Amount',      'PHP  ${tx.amount.toStringAsFixed(2)}'),
       _colonRow('Acquirer Fee','PHP  ${tx.acquirerFee.toStringAsFixed(2)}'),
       '',
@@ -97,8 +93,7 @@ class PrinterService {
       '',
       _centered('RCBC/CARD'),
       '',
-      _centered('$copy CUSTOMER COPY $copy'),
-      '',
+      _centered('***** CUSTOMER COPY *****'),
       '',
       '',
       '',
@@ -107,12 +102,10 @@ class PrinterService {
 
   /// Formats a row as "Label        : value" matching the client receipt style.
   String _colonRow(String label, String value) {
-    const labelWidth = 13;
-    final paddedLabel = label.length >= labelWidth
-        ? label.substring(0, labelWidth)
-        : label + ' ' * (labelWidth - label.length);
-    final maxValue = _lineWidth - labelWidth - 3; // 3 = " : "
-    final safeValue = _truncate(value, maxValue.clamp(1, _lineWidth));
+    final paddedLabel = label.length >= _labelWidth
+        ? label.substring(0, _labelWidth)
+        : label + ' ' * (_labelWidth - label.length);
+    final safeValue = value.trim().replaceAll('\n', ' ');
     return '$paddedLabel: $safeValue';
   }
 

@@ -34,9 +34,10 @@ class PrinterHandler(private val context: Context) {
 
     private fun printReceipt(call: MethodCall, result: MethodChannel.Result) {
         val lines = call.argument<List<String>>("lines").orEmpty()
+        val preLogoLines = call.argument<List<String>>("preLogoLines").orEmpty()
         val gray = call.argument<Int>("gray") ?: 3
         val alignName = call.argument<String>("align") ?: "LEFT"
-        val textSize = call.argument<Int>("textSize") ?: 18
+        val textSize = call.argument<Int>("textSize") ?: 22
         val bold = call.argument<Boolean>("bold") ?: false
         val underline = call.argument<Boolean>("underline") ?: false
 
@@ -50,8 +51,6 @@ class PrinterHandler(private val context: Context) {
             val typeface = runCatching { Typeface.createFromAsset(context.assets, "topwise.ttf") }
                 .getOrNull()
             val template = PrintTemplate.getInstance()
-            template.init(context, typeface)
-            template.clear()
 
             val align = when (alignName.uppercase()) {
                 "CENTER" -> Align.CENTER
@@ -59,8 +58,12 @@ class PrinterHandler(private val context: Context) {
                 else -> Align.LEFT
             }
 
-            for (line in lines) {
-                val textUnit = TextUnit("$line\n", textSize).apply {
+            fun buildLines(lineList: List<String>) {
+                template.init(context, typeface)
+                template.clear()
+                // Join all lines into a single TextUnit to avoid inter-unit spacing
+                val combined = lineList.joinToString("\n")
+                val textUnit = TextUnit("$combined\n", textSize).apply {
                     this.align = align
                     setBold(bold)
                     setUnderline(underline)
@@ -71,13 +74,22 @@ class PrinterHandler(private val context: Context) {
 
             printer.setPrinterGray(gray)
 
-            // Queue the logo bitmap first, then the text template bitmap
+            // 1. Pre-logo lines (e.g. CUSTOMER COPY header)
+            if (preLogoLines.isNotEmpty()) {
+                buildLines(preLogoLines)
+                printer.addRuiImage(template.printBitmap, 0)
+            }
+
+            // 2. Logo bitmap
             val logoBitmap = loadLogoBitmap()
             if (logoBitmap != null) {
                 printer.addRuiImage(logoBitmap, 0)
             } else {
                 Log.w(TAG, "Logo bitmap could not be loaded; printing without logo")
             }
+
+            // 3. Main receipt body
+            buildLines(lines)
             printer.addRuiImage(template.printBitmap, 0)
 
             val printResult = waitForPrint(printer)
