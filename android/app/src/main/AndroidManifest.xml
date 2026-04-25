@@ -1,4 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.CLOUDPOS_PRINTER"/>
+    <uses-permission android:name="android.permission.CLOUDPOS_MAGCARD"/>
+    <uses-permission android:name="android.permission.CLOUDPOS_ICCARD"/>
+    <uses-permission android:name="android.permission.CLOUDPOS_RFCARD"/>
+    <uses-permission android:name="android.permission.CLOUDPOS_EMVL2"/>
+    <uses-permission android:name="android.permission.CLOUDPOS_SYSTEM"/>
+    <uses-permission android:name="android.permission.CLOUDPOS_DEVICE"/>
     <application
         android:label="rcbc_atm_go"
         android:name="${applicationName}"

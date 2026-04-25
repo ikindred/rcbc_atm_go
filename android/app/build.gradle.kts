@@ -6,6 +6,13 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        getByName("debug") {
+            enableV1Signing = true
+            enableV2Signing = false
+        }
+    }
+
     namespace = "com.example.rcbc_atm_go"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
@@ -41,4 +48,8 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
 }
