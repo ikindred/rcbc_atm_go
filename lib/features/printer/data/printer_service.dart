@@ -12,7 +12,7 @@ class PrinterResult {
 }
 
 class PrinterService {
-  static const int _lineWidth = 32;
+  static const int _lineWidth = 40;
   static const MethodChannel _methodChannel = MethodChannel('topwise/device');
   static const Duration _printTimeout = Duration(seconds: 20);
 
@@ -25,7 +25,7 @@ class PrinterService {
             'lines': _buildReceiptLines(tx),
             'gray': 3,
             'align': 'LEFT',
-            'textSize': 18,
+            'textSize': 16,
             'bold': false,
             'underline': false,
           })
@@ -59,41 +59,61 @@ class PrinterService {
   }
 
   List<String> _buildReceiptLines(TransactionModel tx) {
-    final separator = '-' * _lineWidth;
-    final lines = <String>[
-      _centered('RCBC ATM GO'),
-      _centered('MERCHANT NAME'),
-      _centered('HEADER 1'),
-      _centered('HEADER 2'),
-      _centered('HEADER 3'),
-      _centered('HEADER 4'),
-      _centered('VERSION 1.0'),
-      _centered('<<${tx.transactionType}>>'),
-      separator,
-      _leftRight('Date/Time', tx.dateTime),
-      _leftRight('RRN', tx.rrn),
-      _leftRight('TID', tx.tid),
-      _leftRight('MID', tx.mid),
-      _leftRight('Invoice No.', tx.invoiceNo),
-      _leftRight('Trace ID', tx.traceId),
-      _leftRight('Status', tx.status),
-      separator,
-      _leftRight('Card Type', tx.cardType),
-      _leftRight('Auth Code', tx.authCode),
-      _leftRight('Card No.', tx.cardNo),
-      separator,
-      _leftRight('Amount', 'PHP ${tx.amount}'),
-      _leftRight('Acquirer Fee', 'PHP ${tx.acquirerFee}'),
-      _leftRight('Total', 'PHP ${tx.total}'),
-      separator,
+    final dash = '-' * _lineWidth;
+    final copy = '*' * 5;
+
+    return [
+      _centered('$copy CUSTOMER COPY $copy'),
+      '',
+      // Sub-header (logo image prints above these lines via native code)
+      _centered('RCBC Savings Bank'),
+      _centered('333 Sen. Gil Puyat Ave, Makati'),
+      _centered('www.rcbc.com'),
+      '',
+      dash,
+      _centered(tx.transactionType.toUpperCase()),
+      dash,
+      '',
+      _colonRow('Date / Time', tx.dateTime),
+      _colonRow('RRN',         tx.rrn),
+      _colonRow('TID',         tx.tid),
+      _colonRow('MID',         tx.mid),
+      _colonRow('Invoice No.', tx.invoiceNo),
+      _colonRow('Trace ID',    tx.traceId),
+      _colonRow('Status',      tx.status),
+      dash,
+      _colonRow('Card Type',   tx.cardType),
+      _colonRow('Auth Code',   tx.authCode),
+      _colonRow('Card No',     tx.cardNo),
+      dash,
+      '',
+      _colonRow('Amount',      'PHP  ${tx.amount.toStringAsFixed(2)}'),
+      _colonRow('Acquirer Fee','PHP  ${tx.acquirerFee.toStringAsFixed(2)}'),
+      '',
+      _colonRow('TOTAL',       'PHP  ${tx.total.toStringAsFixed(2)}'),
+      '',
       _centered('PIN Verified'),
       _centered('Signature Not Required'),
+      '',
+      _centered('RCBC/CARD'),
+      '',
+      _centered('$copy CUSTOMER COPY $copy'),
+      '',
       '',
       '',
       '',
     ];
+  }
 
-    return lines;
+  /// Formats a row as "Label        : value" matching the client receipt style.
+  String _colonRow(String label, String value) {
+    const labelWidth = 13;
+    final paddedLabel = label.length >= labelWidth
+        ? label.substring(0, labelWidth)
+        : label + ' ' * (labelWidth - label.length);
+    final maxValue = _lineWidth - labelWidth - 3; // 3 = " : "
+    final safeValue = _truncate(value, maxValue.clamp(1, _lineWidth));
+    return '$paddedLabel: $safeValue';
   }
 
   String _centered(String text) {

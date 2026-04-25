@@ -21,56 +21,73 @@ class WithdrawalSummaryPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.withdraw)),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Summary',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 16),
-            _SummaryRow(
-              label: 'Amount',
-              value: 'PHP ${amount.toStringAsFixed(2)}',
-            ),
-            const SizedBox(height: 8),
-            const _SummaryRow(label: 'Acquirer Fee', value: 'PHP 0.00'),
-            const SizedBox(height: 8),
-            _SummaryRow(
-              label: 'Total',
-              value: 'PHP ${total.toStringAsFixed(2)}',
-            ),
-            const Spacer(),
-            OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.cancel,
-                side: const BorderSide(color: AppColors.cancel),
-                minimumSize: const Size(double.infinity, 52),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
+            Expanded(
+              child: Center(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'Transaction Summary',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _SummaryRow(
+                          label: 'Amount',
+                          value: 'PHP ${amount.toStringAsFixed(2)}',
+                        ),
+                        const Divider(color: AppColors.divider),
+                        const _SummaryRow(
+                            label: 'Acquirer Fee', value: 'PHP 0.00'),
+                        const Divider(color: AppColors.divider),
+                        _SummaryRow(
+                          label: 'Total',
+                          value: 'PHP ${total.toStringAsFixed(2)}',
+                          isTotal: true,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              onPressed: () => context.pop(),
-              child: const Text(AppStrings.cancel),
             ),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.confirm,
-              ),
-              onPressed: amount <= 0
-                  ? null
-                  : () {
-                      context.read<TransactionCubit>().confirmWithdrawal(
-                        amount.toDouble(),
-                      );
-                      final state = context.read<TransactionCubit>().state;
-                      if (state is TransactionSuccess) {
-                        context.go('/receipt', extra: state.transaction);
-                      }
-                    },
-              child: const Text(AppStrings.proceed),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.cancel,
+                      side: const BorderSide(
+                        color: AppColors.cancel,
+                        width: 1.5,
+                      ),
+                    ),
+                    onPressed: () => context.go('/menu'),
+                    child: const Text(AppStrings.cancel),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    onPressed: amount <= 0
+                        ? null
+                        : () => context.go('/withdraw/card-entry'),
+                    child: const Text(AppStrings.proceed),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -80,17 +97,33 @@ class WithdrawalSummaryPage extends StatelessWidget {
 }
 
 class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({required this.label, required this.value});
+  const _SummaryRow({
+    required this.label,
+    required this.value,
+    this.isTotal = false,
+  });
 
   final String label;
   final String value;
+  final bool isTotal;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Text(label)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(color: AppColors.textSecond),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: isTotal ? AppColors.primary : AppColors.textPrimary,
+          ),
+        ),
       ],
     );
   }

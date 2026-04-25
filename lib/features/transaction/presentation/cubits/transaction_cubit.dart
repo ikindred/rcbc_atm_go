@@ -9,24 +9,85 @@ class TransactionCubit extends Cubit<TransactionState> {
     emit(TransactionAmountEntered(amount));
   }
 
-  void confirmWithdrawal(double amount) {
+  Future<void> simulateCardInsert(double amount) async {
+    await Future<void>.delayed(const Duration(seconds: 2));
+    emit(
+      TransactionCardInserted(
+        amount: amount,
+        maskedCard: '**** **** **** 1105',
+        cardHolder: 'JUAN DELA CRUZ',
+        expiry: '05/26',
+        cardType: 'MASTERCARD',
+        accountType: 'SAVINGS',
+      ),
+    );
+  }
+
+  void enterPin(String pin) {
+    final currentState = state;
+    if (currentState is! TransactionCardInserted) {
+      emit(const TransactionError('Card details are missing'));
+      return;
+    }
+
+    emit(
+      TransactionPinEntered(
+        amount: currentState.amount,
+        maskedCard: currentState.maskedCard,
+        cardHolder: currentState.cardHolder,
+        expiry: currentState.expiry,
+        cardType: currentState.cardType,
+        accountType: currentState.accountType,
+        pin: pin,
+      ),
+    );
+  }
+
+  Future<void> processTransaction() async {
+    final currentState = state;
+    if (currentState is! TransactionPinEntered) {
+      emit(const TransactionError('PIN is required before processing'));
+      return;
+    }
+
+    emit(
+      TransactionProcessing(
+        amount: currentState.amount,
+        maskedCard: currentState.maskedCard,
+        cardHolder: currentState.cardHolder,
+        expiry: currentState.expiry,
+        cardType: currentState.cardType,
+        accountType: currentState.accountType,
+      ),
+    );
+
+    await Future<void>.delayed(const Duration(seconds: 3));
+
+    final now = DateTime.now();
+    final dateTime =
+        '${now.month.toString().padLeft(2, '0')}/'
+        '${now.day.toString().padLeft(2, '0')}/'
+        '${now.year} '
+        '${now.hour.toString().padLeft(2, '0')}:'
+        '${now.minute.toString().padLeft(2, '0')}:'
+        '${now.second.toString().padLeft(2, '0')}';
+
     final transaction = TransactionModel(
       transactionType: 'WITHDRAW',
-      dateTime: DateTime.now().toString(),
-      rrn: '000001',
+      dateTime: dateTime,
+      rrn: 'RRN${DateTime.now().millisecondsSinceEpoch % 1000000}',
       tid: '62000005',
       mid: '88000000',
-      invoiceNo: 'INV000001',
-      traceId: 'TRACE000001',
+      invoiceNo: 'INV${DateTime.now().millisecondsSinceEpoch % 1000000}',
+      traceId: 'TRC${DateTime.now().millisecondsSinceEpoch % 1000000}',
       status: 'Success',
-      cardType: 'MASTERCARD',
-      authCode: 'AUTH01',
-      cardNo: 'XXXXXX******* XXXX',
-      amount: amount,
+      cardType: currentState.cardType,
+      authCode: 'A1B2C3',
+      cardNo: currentState.maskedCard,
+      amount: currentState.amount,
       acquirerFee: 0.00,
-      total: amount,
+      total: currentState.amount,
     );
-    emit(TransactionConfirmed(transaction));
     emit(TransactionSuccess(transaction));
   }
 

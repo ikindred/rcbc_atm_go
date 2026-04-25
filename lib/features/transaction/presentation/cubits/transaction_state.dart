@@ -21,13 +21,91 @@ class TransactionAmountEntered extends TransactionState {
   List<Object?> get props => [amount];
 }
 
-class TransactionConfirmed extends TransactionState {
-  const TransactionConfirmed(this.transaction);
+class TransactionCardInserted extends TransactionState {
+  const TransactionCardInserted({
+    required this.amount,
+    required this.maskedCard,
+    required this.cardHolder,
+    required this.expiry,
+    required this.cardType,
+    required this.accountType,
+  });
 
-  final TransactionModel transaction;
+  final double amount;
+  final String maskedCard;
+  final String cardHolder;
+  final String expiry;
+  final String cardType;
+  final String accountType;
 
   @override
-  List<Object?> get props => [transaction];
+  List<Object?> get props => [
+        amount,
+        maskedCard,
+        cardHolder,
+        expiry,
+        cardType,
+        accountType,
+      ];
+}
+
+class TransactionPinEntered extends TransactionState {
+  const TransactionPinEntered({
+    required this.amount,
+    required this.maskedCard,
+    required this.cardHolder,
+    required this.expiry,
+    required this.cardType,
+    required this.accountType,
+    required this.pin,
+  });
+
+  final double amount;
+  final String maskedCard;
+  final String cardHolder;
+  final String expiry;
+  final String cardType;
+  final String accountType;
+  final String pin;
+
+  @override
+  List<Object?> get props => [
+        amount,
+        maskedCard,
+        cardHolder,
+        expiry,
+        cardType,
+        accountType,
+        pin,
+      ];
+}
+
+class TransactionProcessing extends TransactionState {
+  const TransactionProcessing({
+    required this.amount,
+    required this.maskedCard,
+    required this.cardHolder,
+    required this.expiry,
+    required this.cardType,
+    required this.accountType,
+  });
+
+  final double amount;
+  final String maskedCard;
+  final String cardHolder;
+  final String expiry;
+  final String cardType;
+  final String accountType;
+
+  @override
+  List<Object?> get props => [
+        amount,
+        maskedCard,
+        cardHolder,
+        expiry,
+        cardType,
+        accountType,
+      ];
 }
 
 class TransactionSuccess extends TransactionState {
