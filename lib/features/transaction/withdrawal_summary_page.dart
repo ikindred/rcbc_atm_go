@@ -83,7 +83,7 @@ class WithdrawalSummaryPage extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: amount <= 0
                         ? null
-                        : () => context.push('/withdraw/card-entry'),
+                        : () => context.go('/withdraw/card-entry'),
                     child: const Text(AppStrings.proceed),
                   ),
                 ),

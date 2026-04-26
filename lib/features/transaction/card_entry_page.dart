@@ -62,7 +62,7 @@ class _CardEntryPageState extends State<CardEntryPage>
                 ? null
                 : () {
                     context.read<TransactionCubit>().reset();
-                    context.pop();
+                    context.go('/menu');
                   },
           ),
           bottom: const PreferredSize(
@@ -136,10 +136,10 @@ class _CardEntryPageState extends State<CardEntryPage>
                         ? null
                         : () {
                             context.read<TransactionCubit>().reset();
-                            context.pop();
+                            context.go('/menu');
                           },
                     child: const Text(
-                      'BACK',
+                      'CANCEL',
                       style: TextStyle(
                         color: AppColors.cancel,
                         fontWeight: FontWeight.w700,
