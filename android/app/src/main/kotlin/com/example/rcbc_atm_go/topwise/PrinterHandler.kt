@@ -5,7 +5,10 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.Typeface
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.topwise.cloudpos.aidl.printer.AidlPrinter
 import com.topwise.cloudpos.aidl.printer.AidlPrinterListener
@@ -47,63 +50,67 @@ class PrinterHandler(private val context: Context) {
             return
         }
 
-        try {
-            val typeface = runCatching { Typeface.createFromAsset(context.assets, "topwise.ttf") }
-                .getOrNull()
-            val template = PrintTemplate.getInstance()
+        // Run all blocking printer work on a background thread so the Android
+        // main thread stays free for Flutter frame rendering (animation stays smooth).
+        val mainHandler = Handler(Looper.getMainLooper())
+        Thread {
+            try {
+                val typeface = runCatching { Typeface.createFromAsset(context.assets, "topwise.ttf") }
+                    .getOrNull()
+                val template = PrintTemplate.getInstance()
 
-            val align = when (alignName.uppercase()) {
-                "CENTER" -> Align.CENTER
-                "RIGHT" -> Align.RIGHT
-                else -> Align.LEFT
-            }
-
-            fun buildLines(lineList: List<String>) {
-                template.init(context, typeface)
-                template.clear()
-                // Join all lines into a single TextUnit to avoid inter-unit spacing
-                val combined = lineList.joinToString("\n")
-                val textUnit = TextUnit("$combined\n", textSize).apply {
-                    this.align = align
-                    setBold(bold)
-                    setUnderline(underline)
-                    setWordWrap(true)
+                val align = when (alignName.uppercase()) {
+                    "CENTER" -> Align.CENTER
+                    "RIGHT" -> Align.RIGHT
+                    else -> Align.LEFT
                 }
-                template.add(textUnit)
-            }
 
-            printer.setPrinterGray(gray)
+                fun buildLines(lineList: List<String>) {
+                    template.init(context, typeface)
+                    template.clear()
+                    val combined = lineList.joinToString("\n")
+                    val textUnit = TextUnit("$combined\n", textSize).apply {
+                        this.align = align
+                        setBold(bold)
+                        setUnderline(underline)
+                        setWordWrap(true)
+                    }
+                    template.add(textUnit)
+                }
 
-            // 1. Pre-logo lines (e.g. CUSTOMER COPY header)
-            if (preLogoLines.isNotEmpty()) {
-                buildLines(preLogoLines)
+                printer.setPrinterGray(gray)
+
+                // 1. Header bitmap — CUSTOMER COPY text + logo combined into one
+                //    (avoids the gap the SDK adds when starting a new bitmap block)
+                val headerBitmap = loadHeaderBitmap(preLogoLines.joinToString("\n"))
+                if (headerBitmap != null) {
+                    printer.addRuiImage(headerBitmap, 0)
+                } else {
+                    Log.w(TAG, "Header bitmap could not be loaded; printing without header/logo")
+                }
+
+                // 2. Main receipt body
+                buildLines(lines)
                 printer.addRuiImage(template.printBitmap, 0)
-            }
 
-            // 2. Logo bitmap
-            val logoBitmap = loadLogoBitmap()
-            if (logoBitmap != null) {
-                printer.addRuiImage(logoBitmap, 0)
-            } else {
-                Log.w(TAG, "Logo bitmap could not be loaded; printing without logo")
+                val printResult = waitForPrint(printer)
+                // MethodChannel result must be delivered on the main thread
+                mainHandler.post {
+                    if (printResult != null) {
+                        result.error("PRINT_FAILED", printResult, null)
+                    } else {
+                        result.success(mapOf("success" to true))
+                    }
+                }
+            } catch (error: Exception) {
+                mainHandler.post {
+                    result.error("PRINT_EXCEPTION", error.message, null)
+                }
             }
-
-            // 3. Main receipt body
-            buildLines(lines)
-            printer.addRuiImage(template.printBitmap, 0)
-
-            val printResult = waitForPrint(printer)
-            if (printResult != null) {
-                result.error("PRINT_FAILED", printResult, null)
-            } else {
-                result.success(mapOf("success" to true))
-            }
-        } catch (error: Exception) {
-            result.error("PRINT_EXCEPTION", error.message, null)
-        }
+        }.start()
     }
 
-    private fun loadLogoBitmap(): Bitmap? {
+    private fun loadHeaderBitmap(headerText: String): Bitmap? {
         return try {
             val stream = context.assets.open(LOGO_ASSET_PATH)
             val raw = BitmapFactory.decodeStream(stream)
@@ -112,16 +119,38 @@ class PrinterHandler(private val context: Context) {
                 Log.e(TAG, "BitmapFactory returned null for $LOGO_ASSET_PATH")
                 return null
             }
+
             val scaledHeight = (raw.height * PRINTER_WIDTH_PX / raw.width.toFloat()).toInt()
             val scaled = Bitmap.createScaledBitmap(raw, PRINTER_WIDTH_PX, scaledHeight, true)
-            // Thermal printers expect a white-background ARGB_8888 bitmap
-            val output = Bitmap.createBitmap(PRINTER_WIDTH_PX, scaledHeight + 16, Bitmap.Config.ARGB_8888)
+
+            val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.BLACK
+                textSize = 24f
+                textAlign = Paint.Align.CENTER
+                typeface = Typeface.DEFAULT
+            }
+
+            // Measure each header text line so we know how tall the text block is
+            val lines = if (headerText.isBlank()) emptyList() else headerText.split("\n")
+            val lineHeight = (textPaint.descent() - textPaint.ascent()).toInt() + 4
+            val textBlockHeight = if (lines.isEmpty()) 0 else lines.size * lineHeight + 8
+
+            val totalHeight = textBlockHeight + scaledHeight + 8
+            val output = Bitmap.createBitmap(PRINTER_WIDTH_PX, totalHeight, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(output)
             canvas.drawColor(Color.WHITE)
-            canvas.drawBitmap(scaled, 0f, 8f, null)
+
+            // Draw each header line
+            lines.forEachIndexed { index, line ->
+                val y = 4f + (index + 1) * lineHeight - textPaint.descent()
+                canvas.drawText(line.trim(), PRINTER_WIDTH_PX / 2f, y, textPaint)
+            }
+
+            // Draw logo below the text
+            canvas.drawBitmap(scaled, 0f, textBlockHeight.toFloat(), null)
             output
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to load logo: ${e.message}", e)
+            Log.e(TAG, "Failed to load header bitmap: ${e.message}", e)
             null
         }
     }

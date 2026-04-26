@@ -56,6 +56,15 @@ class _CardEntryPageState extends State<CardEntryPage>
       child: Scaffold(
         appBar: AppBar(
           title: const Text('WITHDRAW'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: _isLoading
+                ? null
+                : () {
+                    context.read<TransactionCubit>().reset();
+                    context.pop();
+                  },
+          ),
           bottom: const PreferredSize(
             preferredSize: Size.fromHeight(32),
             child: Padding(
@@ -123,7 +132,12 @@ class _CardEntryPageState extends State<CardEntryPage>
                   ),
                   const SizedBox(height: 8),
                   TextButton(
-                    onPressed: _isLoading ? null : () => context.pop(),
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            context.read<TransactionCubit>().reset();
+                            context.pop();
+                          },
                     child: const Text(
                       'BACK',
                       style: TextStyle(

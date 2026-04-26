@@ -26,7 +26,7 @@ class PrinterService {
             'preLogoLines': [_centered('***** CUSTOMER COPY *****')],
             'lines': _buildReceiptLines(tx),
             'gray': 3,
-            'align': 'LEFT',
+            'align': 'CENTER',
             'textSize': 20,
             'bold': false,
             'underline': false,
